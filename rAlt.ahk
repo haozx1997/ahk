@@ -100,10 +100,37 @@ ScrollLock::
 ~F24 & WheelUp::Send "{Volume_Up}"   ; F24 + 滚轮上: 提高音量
 ~F24 & WheelDown::Send "{Volume_Down}" ; F24 + 滚轮下: 降低音量
 
+F24:: {
+    threshold := 10  ; 鼠标移动超过10像素才触发
+    MouseGetPos(&startX, &y)  ; 记录初始X坐标
+    
+    while GetKeyState("F24", "P") {
+        Sleep(10)  ; 降低CPU占用
+        MouseGetPos(&currentX, &y)
+        delta := currentX - startX
+        
+        if (delta > threshold) {
+            Send("{Right down}")  ; 按下右键
+            KeyWait("F24", "T0.1")  ; 等待F24释放或短暂超时
+            Send("{Right up}")      ; 确保释放按键
+            break
+        }
+        else if (delta < -threshold) {
+            Send("{Left down}")    ; 按下左键
+            KeyWait("F24", "T0.1")
+            Send("{Left up}")
+            break
+        }
+    }
+}
+
+
+
+
 ; 系统托盘设置
 A_TrayMenu.Delete()
 A_TrayMenu.Add("退出脚本", (*) => ExitApp())
 TraySetIcon("shell32.dll", 132)  ; 设置音量图标
 
 ; 重新加载热键
-^!r::Reload
+;^!r::Reload

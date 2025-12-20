@@ -155,6 +155,7 @@ void do4() {
   }
 }
 
+
 // ''''
 void do8() {
   delay(50);  // 防抖延时
@@ -162,7 +163,7 @@ void do8() {
   delay(50);
   Keyboard.release(KEY_RETURN);
   Keyboard.releaseAll();
-  delay(100);
+  delay(500);
 
   Keyboard.print("''''");
   Keyboard.press(KEY_RETURN);

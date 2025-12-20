@@ -135,9 +135,9 @@ F23:: {
 }
 
 ; 系统托盘设置
-A_TrayMenu.Delete()
-A_TrayMenu.Add("退出脚本", (*) => ExitApp())
-TraySetIcon("shell32.dll", 132) ; 设置音量图标
+; A_TrayMenu.Delete()
+; A_TrayMenu.Add("退出脚本", (*) => ExitApp())
+; TraySetIcon("shell32.dll", 132) ; 设置音量图标
 
 ; 重新加载热键
 ;^!r::Reload

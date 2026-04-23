@@ -131,6 +131,83 @@
       line-height: 1.5;
     }
 
+    .link-badge {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 1px 6px;
+      border-radius: 10px;
+      background: #e6f4ff;
+      color: #1677ff;
+      font-size: 12px;
+      vertical-align: middle;
+    }
+
+    .link-info {
+      color: #1677ff;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .link-muted {
+      color: #999;
+      font-size: 12px;
+    }
+
+    .link-targets {
+      max-height: 140px;
+      overflow-y: auto;
+      border: 1px solid #d9e3ef;
+      border-radius: 6px;
+      padding: 6px 8px;
+      background: #fafcff;
+      text-align: left;
+      font-size: 13px;
+    }
+
+    .link-targets label {
+      display: block;
+      padding: 2px 0;
+      cursor: pointer;
+      line-height: 1.5;
+    }
+
+    .link-targets input[type="checkbox"] {
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    .link-reverse {
+      margin-top: 6px;
+      color: #1677ff;
+      font-size: 12px;
+      text-align: left;
+    }
+
+    .drag-handle {
+      cursor: grab;
+      user-select: none;
+      font-size: 18px;
+      color: #999;
+      padding: 0 4px;
+      line-height: 1;
+    }
+
+    .drag-handle:hover {
+      color: #1677ff;
+    }
+
+    tr.dragging {
+      opacity: 0.4;
+    }
+
+    tr.drag-over-top td {
+      border-top: 2px solid #1677ff;
+    }
+
+    tr.drag-over-bottom td {
+      border-bottom: 2px solid #1677ff;
+    }
+
     @media (max-width: 900px) {
       body {
         margin: 16px;
@@ -172,17 +249,20 @@
     1. “上次刷新时间”可以直接改，留空表示未刷新。<br />
     2. 时间输入使用本地时间。<br />
     3. 可增加、删除、修改物品名称。<br />
-    4. 保存后主页面会自动读取同一份 localStorage 数据。
+    4. 保存后主页面会自动读取同一份 localStorage 数据。<br />
+    5. <span style="color:#1677ff;">单向联动</span>：在“联动关系”列勾选目标物品，表示刷新本行时会同时刷新这些物品（反之不会）。修改后点“保存修改”生效。<br />
+    6. <span style="color:#1677ff;">拖动排序</span>：点住序号列的 ⋮⋮ 图标可拖动调整物品顺序，释放后自动保存。
   </div>
 
   <table>
     <thead>
       <tr>
-        <th style="width: 8%;">序号</th>
-        <th style="width: 36%;">物品名称</th>
-        <th style="width: 28%;">上次刷新时间</th>
-        <th style="width: 14%;">当前保存值</th>
-        <th style="width: 14%;">操作</th>
+        <th style="width: 6%;">序号</th>
+        <th style="width: 30%;">物品名称</th>
+        <th style="width: 24%;">上次刷新时间</th>
+        <th style="width: 12%;">当前保存值</th>
+        <th style="width: 18%;">联动关系</th>
+        <th style="width: 10%;">操作</th>
       </tr>
     </thead>
     <tbody id="editor-body"></tbody>
@@ -190,96 +270,14 @@
 
   <div id="status">已加载编辑页</div>
 
+  <script src="MM_common.js"></script>
   <script>
-    const STORAGE_KEY = 'petRefreshItems_v3';
-
-    function createDefaultItems() {
-      return [
-        createItem('猫厕所-换猫砂'),
-        createItem('猫厕所-倒粑粑'),
-        createItem('饮水机-小蜜蜂'),
-        createItem('饮水机-不锈钢'),
-        createItem('猫体外驱虫'),
-        createItem('猫体内驱虫'),
-        createItem('洗饮水机-小蜜蜂'),
-        createItem('洗饮水机-不锈钢'),
-        createItem('洗悠米刷牙')
-      ];
-    }
-
-    function createItem(name) {
-      return {
-        id: generateId(),
-        name,
-        current: '',
-        previous: ''
-      };
-    }
-
-    function generateId() {
-      return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
-    }
-
-    function loadItems() {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) {
-        const defaults = createDefaultItems();
-        saveItems(defaults);
-        return defaults;
-      }
-
-      try {
-        const data = JSON.parse(raw);
-        if (Array.isArray(data)) {
-          return data.map(item => ({
-            id: item.id || generateId(),
-            name: item.name || '未命名物品',
-            current: item.current || '',
-            previous: item.previous || ''
-          }));
-        }
-      } catch (e) {
-        console.error('读取 localStorage 失败：', e);
-      }
-
-      const defaults = createDefaultItems();
-      saveItems(defaults);
-      return defaults;
-    }
-
-    function saveItems(items) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-    }
-
-    function formatDate(date) {
-      const yyyy = date.getFullYear();
-      const MM = String(date.getMonth() + 1).padStart(2, '0');
-      const dd = String(date.getDate()).padStart(2, '0');
-      const hh = String(date.getHours()).padStart(2, '0');
-      const mm = String(date.getMinutes()).padStart(2, '0');
-      const ss = String(date.getSeconds()).padStart(2, '0');
-      return `${yyyy}-${MM}-${dd} ${hh}:${mm}:${ss}`;
-    }
-
-    function toDatetimeLocalValue(str) {
-      if (!str) return '';
-      const d = new Date(str.replace(' ', 'T'));
-      if (Number.isNaN(d.getTime())) return '';
-
-      const yyyy = d.getFullYear();
-      const MM = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
-      const hh = String(d.getHours()).padStart(2, '0');
-      const mm = String(d.getMinutes()).padStart(2, '0');
-      return `${yyyy}-${MM}-${dd}T${hh}:${mm}`;
-    }
-
-    function fromDatetimeLocalValue(value) {
-      if (!value) return '';
-      const d = new Date(value);
-      if (Number.isNaN(d.getTime())) return '';
-      return formatDate(d);
-    }
+    const {
+      createItem, createDefaultItems,
+      loadItems, saveItems, loadLinks, saveLinks, clearLinks,
+      toDatetimeLocalValue, fromDatetimeLocalValue,
+      escapeHtml, escapeAttr
+    } = MMCommon;
 
     function setStatus(message) {
       document.getElementById('status').innerText = message;
@@ -287,22 +285,57 @@
 
     function renderEditor() {
       const items = loadItems();
+      const links = loadLinks(items);
+      const idToName = new Map(items.map(i => [i.id, i.name]));
       const tbody = document.getElementById('editor-body');
 
       if (!items.length) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="5">暂无物品，请点击“增加物品”</td>
-          </tr>
+          <td colspan="6">暂无物品，请点击“增加物品”</td>
+        </tr>
         `;
         return;
       }
 
-      tbody.innerHTML = items.map((item, index) => `
-        <tr>
-          <td>${index + 1}</td>
+      // 反向查找：哪些物品会被其它物品联动刷新
+      const reverseLinks = {};
+      Object.entries(links).forEach(([sid, targets]) => {
+        targets.forEach(tid => {
+          if (!reverseLinks[tid]) reverseLinks[tid] = [];
+          reverseLinks[tid].push(sid);
+        });
+      });
+
+      tbody.innerHTML = items.map((item, index) => {
+        const selectedTargets = new Set(links[item.id] || []);
+        const triggeredByIds = reverseLinks[item.id] || [];
+        const triggeredByNames = triggeredByIds.map(id => idToName.get(id)).filter(Boolean);
+
+        // 多选框：制定“刷新本行时要同时刷新的物品”（排除自身）
+        const checkboxes = items
+          .filter(other => other.id !== item.id)
+          .map(other => {
+            const checked = selectedTargets.has(other.id) ? 'checked' : '';
+            return `<label><input type="checkbox" class="link-target" data-source="${item.id}" data-target="${other.id}" ${checked}/>${escapeHtml(other.name)}</label>`;
+          })
+          .join('');
+
+        const reverseHtml = triggeredByNames.length
+          ? `<div class="link-reverse">↩ 被联动刷新：${escapeHtml(triggeredByNames.join('、'))}</div>`
+          : '';
+
+        const nameBadge = selectedTargets.size ? '<span class="link-badge">联动源</span>' : '';
+
+        return `
+        <tr data-id="${item.id}" draggable="false">
+          <td>
+            <span class="drag-handle" draggable="true" title="拖动排序">⋮⋮</span>
+            <div class="small" style="margin-top:4px;">${index + 1}</div>
+          </td>
           <td>
             <input type="text" class="name-input" data-id="${item.id}" value="${escapeAttr(item.name)}" placeholder="请输入物品名称" />
+            ${nameBadge}
           </td>
           <td>
             <input type="datetime-local" class="time-input" data-id="${item.id}" value="${toDatetimeLocalValue(item.current)}" />
@@ -310,27 +343,122 @@
           </td>
           <td class="small">${item.current ? escapeHtml(item.current) : '未刷新'}</td>
           <td>
+            <div class="small" style="text-align:left;margin-bottom:4px;">刷新本行时同时刷新：</div>
+            <div class="link-targets">${checkboxes || '<span class="link-muted">没有其它物品</span>'}</div>
+            ${reverseHtml}
+          </td>
+          <td>
             <button class="delete-btn" onclick="deleteRow('${item.id}')">删除</button>
           </td>
         </tr>
-      `).join('');
+      `;
+      }).join('');
+
+      attachDragHandlers();
     }
 
-    function escapeHtml(text) {
-      return String(text)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+    // 把当前 DOM 中的输入收集成 items（保留未保存的名称/时间编辑），按当前 DOM 顺序
+    function collectCurrentItems() {
+      const existing = new Map(loadItems().map(i => [i.id, i]));
+      const rows = Array.from(document.querySelectorAll('#editor-body tr[data-id]'));
+      return rows.map(row => {
+        const id = row.dataset.id;
+        const old = existing.get(id) || { id, previous: '' };
+        const nameInput = row.querySelector('.name-input');
+        const timeInput = row.querySelector('.time-input');
+        const name = (nameInput ? nameInput.value : old.name || '').trim() || '未命名物品';
+        const current = timeInput ? fromDatetimeLocalValue(timeInput.value) : (old.current || '');
+        return { id, name, current, previous: old.previous || '' };
+      });
     }
 
-    function escapeAttr(text) {
-      return escapeHtml(text);
+    // 把当前 DOM 中勾选的联动关系收集成 links 对象
+    function collectCurrentLinks(validIds) {
+      const newLinks = {};
+      document.querySelectorAll('.link-target:checked').forEach(cb => {
+        const sid = cb.dataset.source;
+        const tid = cb.dataset.target;
+        if (!validIds.has(sid) || !validIds.has(tid) || sid === tid) return;
+        if (!newLinks[sid]) newLinks[sid] = [];
+        if (!newLinks[sid].includes(tid)) newLinks[sid].push(tid);
+      });
+      return newLinks;
+    }
+
+    let dragSourceId = null;
+
+    function attachDragHandlers() {
+      const tbody = document.getElementById('editor-body');
+      const rows = Array.from(tbody.querySelectorAll('tr[data-id]'));
+
+      rows.forEach(row => {
+        const handle = row.querySelector('.drag-handle');
+        if (handle) {
+          handle.addEventListener('dragstart', (e) => {
+            dragSourceId = row.dataset.id;
+            row.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            try { e.dataTransfer.setData('text/plain', row.dataset.id); } catch (_) {}
+            // 用整行作为拖拽预览
+            try { e.dataTransfer.setDragImage(row, 20, 20); } catch (_) {}
+          });
+          handle.addEventListener('dragend', () => {
+            row.classList.remove('dragging');
+            clearDragOver();
+          });
+        }
+
+        row.addEventListener('dragover', (e) => {
+          if (!dragSourceId || dragSourceId === row.dataset.id) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          const rect = row.getBoundingClientRect();
+          const before = (e.clientY - rect.top) < rect.height / 2;
+          clearDragOver();
+          row.classList.add(before ? 'drag-over-top' : 'drag-over-bottom');
+        });
+
+        row.addEventListener('dragleave', () => {
+          row.classList.remove('drag-over-top', 'drag-over-bottom');
+        });
+
+        row.addEventListener('drop', (e) => {
+          if (!dragSourceId || dragSourceId === row.dataset.id) return;
+          e.preventDefault();
+          const rect = row.getBoundingClientRect();
+          const before = (e.clientY - rect.top) < rect.height / 2;
+          const sourceRow = tbody.querySelector(`tr[data-id="${dragSourceId}"]`);
+          if (!sourceRow) return;
+
+          if (before) {
+            row.parentNode.insertBefore(sourceRow, row);
+          } else {
+            row.parentNode.insertBefore(sourceRow, row.nextSibling);
+          }
+          clearDragOver();
+
+          // 保存新顺序（同时保留未保存的输入和联动勾选）
+          const items = collectCurrentItems();
+          const validIds = new Set(items.map(i => i.id));
+          const links = collectCurrentLinks(validIds);
+          saveItems(items);
+          saveLinks(links);
+          dragSourceId = null;
+          renderEditor();
+          setStatus('已调整顺序并保存');
+        });
+      });
+    }
+
+    function clearDragOver() {
+      document.querySelectorAll('tr.drag-over-top, tr.drag-over-bottom').forEach(r => {
+        r.classList.remove('drag-over-top', 'drag-over-bottom');
+      });
     }
 
     function addRow() {
-      const items = loadItems();
+      // 保留未保存的输入
+      const items = collectCurrentItems();
       items.push(createItem('新物品'));
       saveItems(items);
       renderEditor();
@@ -338,7 +466,7 @@
     }
 
     function deleteRow(id) {
-      const items = loadItems();
+      const items = collectCurrentItems();
       const item = items.find(x => x.id === id);
       if (!item) return;
 
@@ -346,39 +474,23 @@
 
       const newItems = items.filter(x => x.id !== id);
       saveItems(newItems);
+      // 同时清理联动中指向该 id 的引用
+      const validIds = new Set(newItems.map(i => i.id));
+      const links = collectCurrentLinks(validIds);
+      saveLinks(links);
       renderEditor();
       setStatus(`已删除：${item.name}`);
     }
 
     function saveAll() {
-      const existingItems = loadItems();
-      const existingMap = new Map(existingItems.map(item => [item.id, item]));
-
-      const nameInputs = Array.from(document.querySelectorAll('.name-input'));
-      const timeInputs = Array.from(document.querySelectorAll('.time-input'));
-
-      const timeMap = new Map();
-      timeInputs.forEach(input => {
-        timeMap.set(input.dataset.id, input.value);
-      });
-
-      const newItems = nameInputs.map(input => {
-        const id = input.dataset.id;
-        const oldItem = existingMap.get(id) || { id, previous: '' };
-        const name = input.value.trim() || '未命名物品';
-        const current = fromDatetimeLocalValue(timeMap.get(id) || '');
-
-        return {
-          id,
-          name,
-          current,
-          previous: oldItem.previous || ''
-        };
-      });
+      const newItems = collectCurrentItems();
+      const validIds = new Set(newItems.map(i => i.id));
+      const newLinks = collectCurrentLinks(validIds);
 
       saveItems(newItems);
+      saveLinks(newLinks);
       renderEditor();
-      setStatus('已保存修改');
+      setStatus('已保存修改（含联动关系）');
     }
 
     function restoreDefaults() {
@@ -386,8 +498,11 @@
 
       const defaults = createDefaultItems();
       saveItems(defaults);
+      // 同时重置联动关系（清除，让 loadLinks 重新按名称默认生成）
+      clearLinks();
+      loadLinks(defaults);
       renderEditor();
-      setStatus('已恢复默认物品清单');
+      setStatus('已恢复默认物品清单（含默认联动关系）');
     }
 
     renderEditor();

@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>编辑宠物护理表</title>
+  <style>
+    body {
+      font-family: Arial, "Microsoft YaHei", sans-serif;
+      margin: 32px;
+      background: #f7f8fa;
+      color: #333;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    h2 {
+      margin: 0;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    table {
+      width: 100%;
+      max-width: 1200px;
+      border-collapse: collapse;
+      background: #fff;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px 12px;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #f0f3f5;
+      font-weight: bold;
+    }
+
+    input[type="text"],
+    input[type="datetime-local"] {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    button, .link-btn {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+      font-size: 14px;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .back-btn {
+      background: #1677ff;
+    }
+
+    .back-btn:hover {
+      background: #0958d9;
+    }
+
+    .add-btn {
+      background: #52c41a;
+    }
+
+    .add-btn:hover {
+      background: #389e0d;
+    }
+
+    .save-btn {
+      background: #722ed1;
+    }
+
+    .save-btn:hover {
+      background: #531dab;
+    }
+
+    .default-btn {
+      background: #fa8c16;
+    }
+
+    .default-btn:hover {
+      background: #d46b08;
+    }
+
+    .delete-btn {
+      background: #cf1322;
+    }
+
+    .delete-btn:hover {
+      background: #a8071a;
+    }
+
+    #status {
+      margin-top: 14px;
+      color: #666;
+      font-size: 14px;
+    }
+
+    .hint {
+      color: #666;
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+
+    .small {
+      color: #666;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 900px) {
+      body {
+        margin: 16px;
+      }
+
+      table {
+        font-size: 14px;
+      }
+
+      th, td {
+        padding: 8px 6px;
+      }
+
+      .actions {
+        flex-direction: column;
+      }
+
+      button, .link-btn {
+        width: 100%;
+        box-sizing: border-box;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>编辑宠物护理表</h2>
+    <a class="link-btn back-btn" href="MM.html">返回主页面</a>
+  </div>
+
+  <div class="actions">
+    <button class="add-btn" onclick="addRow()">增加物品</button>
+    <button class="save-btn" onclick="saveAll()">保存修改</button>
+    <button class="default-btn" onclick="restoreDefaults()">恢复默认物品清单</button>
+  </div>
+
+  <div class="hint">
+    说明：<br />
+    1. “上次刷新时间”可以直接改，留空表示未刷新。<br />
+    2. 时间输入使用本地时间。<br />
+    3. 可增加、删除、修改物品名称。<br />
+    4. 保存后主页面会自动读取同一份 localStorage 数据。
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 8%;">序号</th>
+        <th style="width: 36%;">物品名称</th>
+        <th style="width: 28%;">上次刷新时间</th>
+        <th style="width: 14%;">当前保存值</th>
+        <th style="width: 14%;">操作</th>
+      </tr>
+    </thead>
+    <tbody id="editor-body"></tbody>
+  </table>
+
+  <div id="status">已加载编辑页</div>
+
+  <script>
+    const STORAGE_KEY = 'petRefreshItems_v3';
+
+    function createDefaultItems() {
+      return [
+        createItem('猫厕所-换猫砂'),
+        createItem('猫厕所-倒粑粑'),
+        createItem('饮水机-小蜜蜂'),
+        createItem('饮水机-不锈钢'),
+        createItem('猫体外驱虫'),
+        createItem('猫体内驱虫'),
+        createItem('洗饮水机-小蜜蜂'),
+        createItem('洗饮水机-不锈钢'),
+        createItem('洗悠米刷牙')
+      ];
+    }
+
+    function createItem(name) {
+      return {
+        id: generateId(),
+        name,
+        current: '',
+        previous: ''
+      };
+    }
+
+    function generateId() {
+      return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+    }
+
+    function loadItems() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) {
+        const defaults = createDefaultItems();
+        saveItems(defaults);
+        return defaults;
+      }
+
+      try {
+        const data = JSON.parse(raw);
+        if (Array.isArray(data)) {
+          return data.map(item => ({
+            id: item.id || generateId(),
+            name: item.name || '未命名物品',
+            current: item.current || '',
+            previous: item.previous || ''
+          }));
+        }
+      } catch (e) {
+        console.error('读取 localStorage 失败：', e);
+      }
+
+      const defaults = createDefaultItems();
+      saveItems(defaults);
+      return defaults;
+    }
+
+    function saveItems(items) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    }
+
+    function formatDate(date) {
+      const yyyy = date.getFullYear();
+      const MM = String(date.getMonth() + 1).padStart(2, '0');
+      const dd = String(date.getDate()).padStart(2, '0');
+      const hh = String(date.getHours()).padStart(2, '0');
+      const mm = String(date.getMinutes()).padStart(2, '0');
+      const ss = String(date.getSeconds()).padStart(2, '0');
+      return `${yyyy}-${MM}-${dd} ${hh}:${mm}:${ss}`;
+    }
+
+    function toDatetimeLocalValue(str) {
+      if (!str) return '';
+      const d = new Date(str.replace(' ', 'T'));
+      if (Number.isNaN(d.getTime())) return '';
+
+      const yyyy = d.getFullYear();
+      const MM = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      return `${yyyy}-${MM}-${dd}T${hh}:${mm}`;
+    }
+
+    function fromDatetimeLocalValue(value) {
+      if (!value) return '';
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return '';
+      return formatDate(d);
+    }
+
+    function setStatus(message) {
+      document.getElementById('status').innerText = message;
+    }
+
+    function renderEditor() {
+      const items = loadItems();
+      const tbody = document.getElementById('editor-body');
+
+      if (!items.length) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5">暂无物品，请点击“增加物品”</td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = items.map((item, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>
+            <input type="text" class="name-input" data-id="${item.id}" value="${escapeAttr(item.name)}" placeholder="请输入物品名称" />
+          </td>
+          <td>
+            <input type="datetime-local" class="time-input" data-id="${item.id}" value="${toDatetimeLocalValue(item.current)}" />
+            <div class="small">留空表示未刷新</div>
+          </td>
+          <td class="small">${item.current ? escapeHtml(item.current) : '未刷新'}</td>
+          <td>
+            <button class="delete-btn" onclick="deleteRow('${item.id}')">删除</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function escapeHtml(text) {
+      return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function escapeAttr(text) {
+      return escapeHtml(text);
+    }
+
+    function addRow() {
+      const items = loadItems();
+      items.push(createItem('新物品'));
+      saveItems(items);
+      renderEditor();
+      setStatus('已增加一个新物品');
+    }
+
+    function deleteRow(id) {
+      const items = loadItems();
+      const item = items.find(x => x.id === id);
+      if (!item) return;
+
+      if (!confirm(`确定删除「${item.name}」吗？`)) return;
+
+      const newItems = items.filter(x => x.id !== id);
+      saveItems(newItems);
+      renderEditor();
+      setStatus(`已删除：${item.name}`);
+    }
+
+    function saveAll() {
+      const existingItems = loadItems();
+      const existingMap = new Map(existingItems.map(item => [item.id, item]));
+
+      const nameInputs = Array.from(document.querySelectorAll('.name-input'));
+      const timeInputs = Array.from(document.querySelectorAll('.time-input'));
+
+      const timeMap = new Map();
+      timeInputs.forEach(input => {
+        timeMap.set(input.dataset.id, input.value);
+      });
+
+      const newItems = nameInputs.map(input => {
+        const id = input.dataset.id;
+        const oldItem = existingMap.get(id) || { id, previous: '' };
+        const name = input.value.trim() || '未命名物品';
+        const current = fromDatetimeLocalValue(timeMap.get(id) || '');
+
+        return {
+          id,
+          name,
+          current,
+          previous: oldItem.previous || ''
+        };
+      });
+
+      saveItems(newItems);
+      renderEditor();
+      setStatus('已保存修改');
+    }
+
+    function restoreDefaults() {
+      if (!confirm('确定恢复为默认物品清单吗？当前数据会被覆盖。')) return;
+
+      const defaults = createDefaultItems();
+      saveItems(defaults);
+      renderEditor();
+      setStatus('已恢复默认物品清单');
+    }
+
+    renderEditor();
+  </script>
+</body>
+</html>

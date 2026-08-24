@@ -134,6 +134,13 @@ F23:: {
     }
 }
 
+; Block NumLock and lock Windows when it is pressed.
+NumLock::
+{
+    DllCall("LockWorkStation")
+}
+
+
 ; 系统托盘设置
 ; A_TrayMenu.Delete()
 ; A_TrayMenu.Add("退出脚本", (*) => ExitApp())

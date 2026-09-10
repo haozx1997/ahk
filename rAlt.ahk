@@ -148,3 +148,8 @@ NumLock::
 
 ; 重新加载热键
 ;^!r::Reload
+
+
+
+; Win + F1 = 播放
+#F1::Send "{Media_Play_Pause}" ; 菜单键 + Insert: 播放/暂停
